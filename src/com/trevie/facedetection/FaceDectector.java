@@ -8,6 +8,7 @@ package com.trevie.facedetection;
  *
  * References: https://www.openshift.com/blogs/day-12-opencv-face-detection-for-java-developers
  * 			   http://stackoverflow.com/questions/20317611/face-detection-using-a-webcam-interface-in-java-in-windows
+ *				http://docs.opencv.org/doc/tutorials/objdetect/cascade_classifier/cascade_classifier.html#cascade-classifier
  *   Many others
  */
 
@@ -32,15 +33,25 @@ public class FaceDectector {
 	 * @param args
 	 */
 	private static Boolean detectFacesEnabled = true;
-	private static String face_cascade_file = FaceDectector.class.getResource("haarcascade_frontalface_alt.xml").getPath().substring(1);;
+	
+	private static String face_cascade_file;
+	private static String eyes_cascade_file;
+	
 	private static CascadeClassifier face_cascade_classifier; // = new CascadeClassifier(face_cascade_file);
+	private static CascadeClassifier eyes_cascade_classifier;	
+	
 	private static String windowName = "Webcam Face Detection";
 	
 	public static void main(String[] args) {
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 		
-		System.out.println("Loading classifier from " + face_cascade_file);
+		face_cascade_file = FaceDectector.class.getResource("haarcascade_frontalface_alt.xml").getPath().substring(1);
+		System.out.println("Loading face classifier from " + face_cascade_file);
 		face_cascade_classifier = new CascadeClassifier(face_cascade_file);
+		
+		eyes_cascade_file = FaceDectector.class.getResource("haarcascade_eye_tree_eyeglasses.xml").getPath().substring(1);
+		System.out.println("Loading eyes classifier from " + eyes_cascade_file);
+		eyes_cascade_classifier = new CascadeClassifier(eyes_cascade_file);
 
 		VideoCapture capture;
 		Mat frame = new Mat();
@@ -199,10 +210,36 @@ public class FaceDectector {
 		
 		Rect[] facesArray = faceDetections.toArray();
 		
+		
+		
+		
 		for (int i = 0; i < facesArray.length; i++)
 		{
-			Point center = new Point(facesArray[i].x + facesArray[i].width * 0.5, facesArray[i].y + facesArray[i].height * 0.5);
-			Core.ellipse(frame, center, new Size(facesArray[i].width * 0.5, facesArray[i].height * 0.5), 0, 0, 360, new Scalar(255, 0, 255), 4, 8, 0);
+			//for (Rect rect : faceDetections.toArray())
+			//	Core.rectangle(image, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(0, 255,0));
+			// Draw a magenta circle around each detected face
+			//Point center = new Point(facesArray[i].x + facesArray[i].width * 0.5, facesArray[i].y + facesArray[i].height * 0.5);
+			//Core.ellipse(frame, center, new Size(facesArray[i].width * 0.5, facesArray[i].height * 0.5), 0, 0, 360, new Scalar(255, 0, 255), 4, 8, 0);
+			
+			Core.rectangle(frame, new Point(facesArray[i].x, facesArray[i].y), new Point(facesArray[i].x + facesArray[i].width, facesArray[i].y + facesArray[i].height), new Scalar(0, 255, 0));
+			
+			// Search for eyes, but only within the detected face
+			Mat faceROI = frame.submat(facesArray[i]);
+			MatOfRect eyes = new MatOfRect();
+			
+			eyes_cascade_classifier.detectMultiScale(faceROI, eyes, 1.1, 2, 0, new Size(30,30), new Size());
+			//System.out.println(String.format("Detected %s eyes", eyes.toArray().length));
+			
+			Rect[] eyesArray = eyes.toArray();
+			
+			for (int j = 0; j < eyesArray.length; j++)
+			{
+				Point center1 = new Point(facesArray[i].x + eyesArray[j].x + eyesArray[j].width * 0.5, facesArray[i].y + eyesArray[j].y + eyesArray[j].height * 0.5);
+				int radius = (int) Math.round((eyesArray[j].width + eyesArray[j].height) * 0.25);
+				//Core.circle(frame, center1, radius, new Scalar(255, 0, 0), 4 , 8, 0);
+				Core.circle(frame, center1, radius, new Scalar(255, 0, 0), 1);
+				
+			}
 			
 			
 		} // end going through all faces
